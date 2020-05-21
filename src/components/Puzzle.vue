@@ -31,40 +31,51 @@ export default {
       getPalette(c1, c2) {
           return chroma.scale([c1,c2]).mode('lch').colors(9);
       },
-      paint() {
-          let palette = this.getPalette(this.color1, this.color2);
-          let colors = [];
-          palette.forEach(function(color) {
-              for (let i=0; i<6; i++) {
-                  colors.push(chroma(color).brighten(0.4 * i).hex());
-              }
-          });
+      reuniteTints(arrays) {
+        let array0 = [], array1 = [], array2 = [], array3 = [], array4 = [], array5 = [], array6 = [], array7 = [], array8 = [];
+        let tints = [array0, array1, array2, array3, array4, array5, array6, array7, array8];
 
-          return colors;
+        for (let array of arrays) {
+            for (let j=0; j<array.length; j++) {
+                tints[j].push(array[j]);
+            }
+        };
+
+          return tints.flat();
       },
       getAllTints() {
         return document.querySelectorAll('.tint');
       },
       getMoveableTints() {
-          return Array.from(this.getAllTints()).filter(e => getComputedStyle(e, null).display == 'block');
+          return Array.from(this.getAllTints()).filter(e => {
+              return e.dataset.id >= 9 && e.dataset.id < this.getAllTints().length - 9;
+            });
+      },
+      paint() {
+          let palette = this.getPalette(this.color1, this.color2);
+          let colors0 = [], colors1 = [], colors2 = [], colors3 = [], colors4 = [], colors5 = [], colors6 = [], colors7 = [], colors8 = [];
+          let colors = [colors0, colors1, colors2, colors3, colors4, colors5, colors6, colors7, colors8];
+          palette.forEach(function(color, index) {
+              for (let i=0; i<6; i++) {
+                  colors[index].push(chroma(color).brighten(0.4 * i).hex());
+              }
+          });
+
+          return this.reuniteTints(colors);
       },
       getTintsIds() {
           return Array.from(this.getAllTints()).map(e => e.dataset.id);
       },
-      addClassStatic() {
-        let sortabledList = Array.from(this.getAllTints()).filter(el => el.dataset.id % 6 === 0);
-        sortabledList.forEach(el => el.classList.add('static'));
-      },
       shuffleTints() {
         var list = document.querySelector('.puzzle');
         for (var i = this.getMoveableTints().length; i >= 0; i--) {
-            list.appendChild(this.getMoveableTints()[Math.random() * i | 0]);
+            console.log(this.getMoveableTints().length+9);
+            list.insertBefore(this.getMoveableTints()[Math.random() * i | 1], list.children[this.getAllTints().length-9]);
         }
       }
   },
   mounted() {
     Sortable.mount(new Swap());
-    this.addClassStatic();
 
     let answer = [];
     let count = this.getAllTints().length;
@@ -102,39 +113,39 @@ export default {
 <style scoped lang="scss">
 .puzzle {
     display: flex;
-    flex-direction: column;
     align-items: flex-start;
     flex-wrap: wrap;
     height: 36rem;
     width: 54rem;
-}
-.tint {
-    width: 6rem;
-    height: 6rem;
-    cursor: grab;
-    background-color: blue;
-    position: relative;
-    transition: background-color 0.3s;
 
-    &:nth-of-type(6n+1), &:nth-of-type(6n) {
-        -webkit-user-select: none;
-        -webkit-user-drag: none;
-        -webkit-app-region: no-drag;
-        cursor: default;
-        display: flex;
+    .tint {
+        width: 6rem;
+        height: 6rem;
+        cursor: grab;
+        background-color: blue;
+        position: relative;
+        transition: background-color 0.3s;
 
-        &:before {
-            position: absolute;
-            content: '.';
-            color: white;
-            left: 50%;
-            top: 50%;
-            transform: translateX(-50%) translateY(-50%);
+        &:nth-of-type(-n+9), &:nth-last-child(-n+9) {
+            -webkit-user-select: none;
+            -webkit-user-drag: none;
+            -webkit-app-region: no-drag;
+            cursor: default;
+            display: flex;
+
+            &:before {
+                position: absolute;
+                content: '.';
+                color: white;
+                left: 50%;
+                top: 50%;
+                transform: translateX(-50%) translateY(-50%);
+            }
         }
-    }
 
-    &.highlighted {
+        &.highlighted {
 
+        }
     }
 }
 </style>
