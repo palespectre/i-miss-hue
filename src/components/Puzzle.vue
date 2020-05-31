@@ -1,15 +1,16 @@
 <template>
     <div class="puzzle-wrapper">
-        <button @click="shuffleTints()">Suffle</button>
-        <div class="puzzle">
-            <div v-for="(tint, index) in paint()" :key="tint.id" class="tint" :data-id="index" :style="{ backgroundColor: tint }"></div>
-        </div>
+        <button @click="shuffleTints()">Shuffle</button>
+        <draggable v-model="paintUpdated" tag="tbody" :move="handleMove" @end="handleDragEnd" :options="{animation:500}" class="puzzle">
+            <div v-for="(tint, index) in items" :key="tint.id" class="tint" :data-id="index" :style="{ backgroundColor: tint }"></div>
+        </draggable>
+        <p><span id="swapNumber">{{ move }}</span> coup{{ move > 1 ? 's' : '' }}</p>
     </div>
 </template>
 
 <script>
 import Column from '@/components/Column.vue';
-import { Sortable, Swap } from 'sortablejs';
+import draggable from 'vuedraggable';
 import Vue from 'vue';
 import VueLodash from 'vue-lodash';
 import lodash from 'lodash';
@@ -19,19 +20,56 @@ const chroma = require('chroma-js');
 
 export default {
   name: 'Puzzle',
+  data() {
+    return {
+      move: 0,
+      items: this.paint(),
+    }
+  },
   props: 
     [
         'color1',
-        'color2'
+        'color2',
     ],
   components: {
-      
+      draggable,
+  },
+  computed: {
+      paintUpdated() {
+          return this.items = this.paint();
+      }
   },
   methods: {
-      getPalette(c1, c2) {
-          return chroma.scale([c1,c2]).mode('lch').colors(9);
-      },
-      reuniteTints(arrays) {
+    incrementMove() {
+        this.move++;
+    },
+    handleMove(e) {
+        const { index, futureIndex } = e.draggedContext
+        this.movingIndex = index
+        this.futureIndex = futureIndex
+        return false // disable sort
+    },
+    handleDragEnd() {
+        let futureElement = document.querySelector(`[data-id="${this.futureIndex}"]`);
+        
+        // prevent element from moving
+        if (getComputedStyle(futureElement, null).display == 'flex') {
+            return false;
+        }
+        
+        this.futureItem = this.items[this.futureIndex];
+        this.movingItem = this.items[this.movingIndex];
+        const _items = Object.assign([], this.items);
+        _items[this.futureIndex] = this.movingItem;
+        _items[this.movingIndex] = this.futureItem;
+
+        this.items = _items;
+        this.incrementMove();
+    },
+    getPalette(c1, c2) {
+        return chroma.scale([c1,c2]).mode('lch').colors(9);
+    },
+    reuniteTints(arrays) {
         let array0 = [], array1 = [], array2 = [], array3 = [], array4 = [], array5 = [], array6 = [], array7 = [], array8 = [];
         let tints = [array0, array1, array2, array3, array4, array5, array6, array7, array8];
 
@@ -41,72 +79,38 @@ export default {
             }
         };
 
-          return tints.flat();
-      },
-      getAllTints() {
+        return tints.flat();
+    },
+    getAllTints() {
         return document.querySelectorAll('.tint');
-      },
-      getMoveableTints() {
-          return Array.from(this.getAllTints()).filter(e => {
-              return e.dataset.id >= 9 && e.dataset.id < this.getAllTints().length - 9;
-            });
-      },
-      paint() {
-          let palette = this.getPalette(this.color1, this.color2);
-          let colors0 = [], colors1 = [], colors2 = [], colors3 = [], colors4 = [], colors5 = [], colors6 = [], colors7 = [], colors8 = [];
-          let colors = [colors0, colors1, colors2, colors3, colors4, colors5, colors6, colors7, colors8];
-          palette.forEach(function(color, index) {
-              for (let i=0; i<6; i++) {
-                  colors[index].push(chroma(color).brighten(0.4 * i).hex());
-              }
-          });
+    },
+    getMoveableTints() {
+        return Array.from(this.getAllTints()).filter(e => {
+            return e.dataset.id >= 9 && e.dataset.id < this.getAllTints().length - 9;
+        });
+    },
+    paint() {
+        let palette = this.getPalette(this.color1, this.color2);
+        let colors0 = [], colors1 = [], colors2 = [], colors3 = [], colors4 = [], colors5 = [], colors6 = [], colors7 = [], colors8 = [];
+        let colors = [colors0, colors1, colors2, colors3, colors4, colors5, colors6, colors7, colors8];
+        palette.forEach(function(color, index) {
+            for (let i=0; i<6; i++) {
+                colors[index].push(chroma(color).brighten(0.4 * i).hex());
+            }
+        });
 
-          return this.reuniteTints(colors);
-      },
-      getTintsIds() {
-          return Array.from(this.getAllTints()).map(e => e.dataset.id);
-      },
-      shuffleTints() {
+        return this.items = this.reuniteTints(colors);
+    },
+    getTintsIds() {
+        return Array.from(this.getAllTints()).map(e => e.dataset.id);
+    },
+    shuffleTints() {
         var list = document.querySelector('.puzzle');
         for (var i = this.getMoveableTints().length; i >= 0; i--) {
-            console.log(this.getMoveableTints().length+9);
             list.insertBefore(this.getMoveableTints()[Math.random() * i | 1], list.children[this.getAllTints().length-9]);
         }
-      }
+    },
   },
-  mounted() {
-    Sortable.mount(new Swap());
-
-    let answer = [];
-    let count = this.getAllTints().length;
-    for (let i=0; i<count; i++) {
-        answer.push(i);
-    };
-
-    Sortable.create(document.querySelector('.puzzle'), {
-      swap: true,
-      swapClass: "highlighted",
-      animation: 250,
-      easing: "cubic-bezier(0.83, 0, 0.17, 1)",
-
-      onMove: function (e) {
-          if (getComputedStyle(e.related, null).display == 'flex') {
-            return false;
-          }
-      },
-
-      onEnd: function(evt) {
-          var itemEl = evt.item;
-          let playerMoves = [];
-          let tints = document.querySelectorAll('.tint');
-          tints.forEach(el => playerMoves.push(parseInt(el.dataset.id)));
-          
-          if (_.isEqual(playerMoves, answer)) {
-              alert('braaaaavoooo');
-          }
-	  }
-    });
-  }
 }
 </script>
 
