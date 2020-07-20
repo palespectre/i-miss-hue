@@ -11,7 +11,7 @@
     "@shopify/draggable": "^1.0.0-beta.8",
     "chroma-js": "^2.1.0",
     "core-js": "^3.6.4",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "sortablejs": "^1.10.2",
     "tinycolor2": "^1.4.1",
     "values.js": "^1.1.1",
