@@ -1,7 +1,8 @@
 <template>
     <div class="puzzle-wrapper">
         <button @click="shuffleTints()">Shuffle</button>
-        <draggable v-model="paintUpdated" tag="tbody" :move="handleMove" @end="handleDragEnd" :options="{animation:500}" class="puzzle">
+        <button @click="originalOrder = getOriginalOrder()">Go !</button>
+        <draggable v-model="paintUpdated" :move="handleMove" @end="handleDragEnd" :options="{animation:500}" class="puzzle">
             <div v-for="(tint, index) in items" :key="tint.id" class="tint" :data-id="index" :style="{ backgroundColor: tint }"></div>
         </draggable>
         <p><span id="swapNumber">{{ move }}</span> coup{{ move > 1 ? 's' : '' }}</p>
@@ -14,7 +15,7 @@ import draggable from 'vuedraggable';
 import Vue from 'vue';
 import VueLodash from 'vue-lodash';
 import lodash from 'lodash';
- 
+
 Vue.use(VueLodash, { name: 'custom' , lodash: lodash });
 const chroma = require('chroma-js');
 
@@ -24,12 +25,12 @@ export default {
     return {
       move: 0,
       items: this.paint(),
+      originalOrder: []
     }
   },
   props: 
     [
-        'color1',
-        'color2',
+        'colorsChosen'
     ],
   components: {
       draggable,
@@ -43,31 +44,48 @@ export default {
     incrementMove() {
         this.move++;
     },
+    paint() {
+        let colorsChosenToArray = Object.values(this.colorsChosen);
+        let palette = this.getPalette(...colorsChosenToArray);
+        let colors0 = [], colors1 = [], colors2 = [], colors3 = [], colors4 = [], colors5 = [], colors6 = [], colors7 = [], colors8 = [];
+        let colors = [colors0, colors1, colors2, colors3, colors4, colors5, colors6, colors7, colors8];
+        palette.forEach(function(color, index) {
+            for (let i=0; i<6; i++) {
+                colors[index].push(chroma(color).brighten(0.4 * i).hex());
+            }
+        });
+
+        return this.items = this.reuniteTints(colors);
+    },
     handleMove(e) {
-        const { index, futureIndex } = e.draggedContext
-        this.movingIndex = index
-        this.futureIndex = futureIndex
-        return false // disable sort
+        let colorDragged = e.dragged;
+        const { index, futureIndex } = e.draggedContext;
+        this.movingIndex = index;
+        this.futureIndex = futureIndex;
+        return false; // disable sort
     },
     handleDragEnd() {
+        let movingElement = document.querySelector(`[data-id="${this.movingIndex}"]`);
         let futureElement = document.querySelector(`[data-id="${this.futureIndex}"]`);
-        
         // prevent element from moving
         if (getComputedStyle(futureElement, null).display == 'flex') {
             return false;
         }
-        
         this.futureItem = this.items[this.futureIndex];
         this.movingItem = this.items[this.movingIndex];
         const _items = Object.assign([], this.items);
         _items[this.futureIndex] = this.movingItem;
         _items[this.movingIndex] = this.futureItem;
-
         this.items = _items;
+
+        if (_.isEqual(_items, this.originalOrder)) {
+            alert('YEEESSS');
+        }
+        console.log(this.originalOrder);
         this.incrementMove();
     },
-    getPalette(c1, c2) {
-        return chroma.scale([c1,c2]).mode('lch').colors(9);
+    getPalette(...colors) {
+        return chroma.scale([...colors]).mode('lch').colors(9);
     },
     reuniteTints(arrays) {
         let array0 = [], array1 = [], array2 = [], array3 = [], array4 = [], array5 = [], array6 = [], array7 = [], array8 = [];
@@ -84,22 +102,18 @@ export default {
     getAllTints() {
         return document.querySelectorAll('.tint');
     },
+    getOriginalOrder() {
+        const tints = this.getAllTints();
+        const originalArray = [];
+        Array.prototype.forEach.call(tints, function(tint) {
+            originalArray.push(chroma(tint.style.backgroundColor).hex());
+        });
+        return originalArray;
+    },
     getMoveableTints() {
         return Array.from(this.getAllTints()).filter(e => {
-            return e.dataset.id >= 9 && e.dataset.id < this.getAllTints().length - 9;
+            return e.dataset.id > 7 && e.dataset.id < this.getAllTints().length - 9;
         });
-    },
-    paint() {
-        let palette = this.getPalette(this.color1, this.color2);
-        let colors0 = [], colors1 = [], colors2 = [], colors3 = [], colors4 = [], colors5 = [], colors6 = [], colors7 = [], colors8 = [];
-        let colors = [colors0, colors1, colors2, colors3, colors4, colors5, colors6, colors7, colors8];
-        palette.forEach(function(color, index) {
-            for (let i=0; i<6; i++) {
-                colors[index].push(chroma(color).brighten(0.4 * i).hex());
-            }
-        });
-
-        return this.items = this.reuniteTints(colors);
     },
     getTintsIds() {
         return Array.from(this.getAllTints()).map(e => e.dataset.id);
@@ -120,7 +134,7 @@ export default {
     align-items: flex-start;
     flex-wrap: wrap;
     height: 36rem;
-    width: 54rem;
+    width: 56rem;
 
     .tint {
         width: 6rem;
@@ -128,6 +142,7 @@ export default {
         cursor: grab;
         background-color: blue;
         position: relative;
+        border: 1px solid transparent;
         transition: background-color 0.3s;
 
         &:nth-of-type(-n+9), &:nth-last-child(-n+9) {
@@ -147,8 +162,13 @@ export default {
             }
         }
 
-        &.highlighted {
+        &.sortable-ghost:not(.sortable-chosen) {
+            width: 5rem;
+            height: 5rem;
+        }
 
+        &.sortable-ghost {
+            border: 1px solid white;
         }
     }
 }
